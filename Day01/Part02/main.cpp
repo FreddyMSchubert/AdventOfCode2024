@@ -4,22 +4,13 @@
 #include <string>
 #include <sstream>
 
-int abs(int num)
-{
-	if (num < 0)
-	{
-		return -num;
-	}
-	return num;
-}
-
 int main()
 {
 	std::multiset<int> col1;
 	std::multiset<int> col2;
 
 	std::ifstream input;
-	input.open("input.txt");
+	input.open("../input.txt");
 	if (!input.is_open() || !input.good())
 	{
 		std::cerr << "Error opening file" << std::endl;
@@ -36,15 +27,17 @@ int main()
 		col2.insert(num2);
 	}
 
-	int total = 0;
-	for (size_t i = 0; i < col1.size(); ++i)
+	int similarity = 0;
+	for (auto it = col1.begin(); it != col1.end(); ++it)
 	{
-		auto it = col1.begin();
-		auto it2 = col2.begin();
-		std::advance(it, i);
-		std::advance(it2, i);
-		total += abs(*it - *it2);
+		std::cout << *it << std::endl;
+		int appearences = 0;
+		for (auto it2 = col2.begin(); it2 != col2.end(); ++it2)
+			if (*it == *it2)
+				appearences++;
+
+		similarity += *it * appearences;
 	}
 
-	std::cout << "Total: " << total << std::endl;
+	std::cout << "Similarity Score: " << similarity << std::endl;
 }
