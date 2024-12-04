@@ -7,6 +7,23 @@
 #include <exception>
 #include <vector>
 
+typedef struct cross
+{
+	char top_left;
+	char top_right;
+	char center;
+	char bottom_left;
+	char bottom_right;
+
+	bool operator==(const cross& other) const {
+	return top_left == other.top_left &&
+			top_right == other.top_right &&
+			center == other.center &&
+			bottom_left == other.bottom_left &&
+			bottom_right == other.bottom_right;
+}
+}	cross;
+
 int main()
 {
 	std::vector<std::string> lines;
@@ -18,6 +35,12 @@ int main()
 		lines.push_back(line);
 	}
 
+	std::vector<cross> possibleCrosses;
+	possibleCrosses.push_back({ 'M', 'S', 'A', 'M', 'S' });
+	possibleCrosses.push_back({ 'M', 'M', 'A', 'S', 'S' });
+	possibleCrosses.push_back({ 'S', 'S', 'A', 'M', 'M' });
+	possibleCrosses.push_back({ 'S', 'M', 'A', 'S', 'M' });
+
 	int crosses = 0;
 
 	// loop through every grid cell
@@ -25,53 +48,16 @@ int main()
 	{
 		for (size_t j = 0; j <= lines[i].length() - 3; j++)
 		{
-			char cl = lines[i][j];
-			char cr = lines[i][j + 2];
+			cross c;
+			c.top_left = lines[i][j];
+			c.top_right = lines[i][j + 2];
+			c.center = lines[i + 1][j + 1];
+			c.bottom_left = lines[i + 2][j];
+			c.bottom_right = lines[i + 2][j + 2];
 
-			/*
-			M.S
-			.A.
-			M.S
-			*/
-
-			std::cout << "Checking row " << i << " col " << j << " with cl " << cl << " and cr " << cr << std::endl;
-
-			if (cl == 'M' && cr == 'M')
-			{
-				std::cout << "- Attempting to match M.M" << std::endl;
-				std::cout << "- Match middle: " << (lines[i + 1][j + 1] == 'A') << " match top right: " << (lines[i + 2][j] == 'S') << " match bottom right: " << (lines[i + 2][j + 2] == 'S') << std::endl;
-				if (lines[i + 1][j + 1] == 'A' && lines[i + 2][j] == 'S' && lines[i + 2][j + 2] == 'S')
-				{
+			for (size_t k = 0; k < possibleCrosses.size(); k++)
+				if (c == possibleCrosses[k])
 					crosses++;
-				}
-			}
-			else if (cl == 'M' && cr == 'S')
-			{
-				std::cout << "- Attempting to match M.S" << std::endl;
-				std::cout << "- Match middle: " << (lines[i + 1][j + 1] == 'A') << " match top right: " << (lines[i + 2][j] == 'M') << " match bottom right: " << (lines[i + 2][j + 2] == 'S') << std::endl;
-				if (lines[i + 1][j + 1] == 'A' && lines[i + 2][j] == 'M' && lines[i + 2][j + 2] == 'S')
-				{
-					crosses++;
-				}
-			}
-			else if (cl == 'S' && cr == 'M')
-			{
-				std::cout << "- Attempting to match S.M" << std::endl;
-				std::cout << "- Match middle: " << (lines[i + 1][j + 1] == 'A') << " match top right: " << (lines[i + 2][j] == 'S') << " match bottom right: " << (lines[i + 2][j + 2] == 'M') << std::endl;
-				if (lines[i + 1][j + 1] == 'A' && lines[i + 2][j] == 'S' && lines[i + 2][j + 2] == 'M')
-				{
-					crosses++;
-				}
-			}
-			else if (cl == 'S' && cr == 'S')
-			{
-				std::cout << "- Attempting to match S.S" << std::endl;
-				std::cout << "- Match middle: " << (lines[i + 1][j + 1] == 'A') << " match top right: " << (lines[i + 2][j] == 'M') << " match bottom right: " << (lines[i + 2][j + 2] == 'M') << std::endl;
-				if (lines[i + 1][j + 1] == 'A' && lines[i + 2][j] == 'M' && lines[i + 2][j + 2] == 'M')
-				{
-					crosses++;
-				}
-			}
 		}
 	}
 
