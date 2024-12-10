@@ -8,123 +8,151 @@
 #include <vector>
 #include <algorithm>
 
-void printIdLine(std::vector<int> idLine)
+typedef struct s_pos
 {
-	for (int i = 0; i < idLine.size(); i++)
-	{
-		if (idLine[i] == -1)
-			std::cout << ".";
-		else
-			std::cout << "_" << idLine[i];
-	}
-	std::cout << std::endl;
+	int x;
+	int y;
+} pos;
+inline bool operator==(const pos& lhs, const pos& rhs) {
+    return lhs.x == rhs.x && lhs.y == rhs.y;
 }
+
+typedef struct s_trail
+{
+	pos position;
+	bool valid;
+	bool done;
+	int trailHeadId;
+	std::vector<pos> path;
+} trail;
+
+inline bool operator==(const trail& lhs, const trail& rhs) {
+    return lhs.position.x == rhs.position.x &&
+           lhs.position.y == rhs.position.y &&
+           lhs.valid == rhs.valid &&
+           lhs.done == rhs.done &&
+		   lhs.path == rhs.path &&
+           lhs.trailHeadId == rhs.trailHeadId;
+}
+
 
 int main()
 {
 	int64_t outputNbr = 0;
 	bool print = false;
+	int maxTrailHeadId = 0;
 
 	std::ifstream input;
 	input.open("../input.txt");
+	std::vector<std::string> map;
 	std::string line;
-	std::getline(input, line);
-
-	std::cout << "----- STEP 1\x1b[31m" << std::endl;
-	// 1. conver to id dot format
-	// in: 12345
-	// out: 0..111....22222
-	int id = 0;
-	bool file = true;
-	size_t pos = 0;
-	std::vector<int> idLine;
-	while (pos < line.size())
+	while (std::getline(input, line))
 	{
-		int nbr = line[pos] - '0';
-		int c = file ? id : -1; // dots are -1
-		for (int i = 0; i < nbr; i++)
-			idLine.push_back(c);
-		if (file)
-			id++;
-		pos++;
-		file = !file;
-		if (print)
-			printIdLine(idLine);
+		map.push_back(line);
 	}
 
-	std::cout << "----- STEP 2\x1b[32m" << std::endl;
-	// Identify files: collect (id, start, end)
-	std::vector<std::tuple<int,int,int>> files;
+	/*
+		basically, flood fill but only sstarting where the height is 0 and ending where the height is 9, sloping in between
+		recursive structure sucks because huge example, so we gotta loop this.
+	*/
+	std::vector<trail> trails;
+
+	// 1 for every 0 create a trail
+	// 2 for every trail, look at every direction you can go in. if none exist, either delete yourself or split yourself up.
+	// 3 once at 9, youre finished
+	// 4 count every trails thats not a duplicate
+
+
+	// 1
+	for (int y = 0; y < map.size(); y++)
 	{
-		int currentId = idLine[0];
-		int start = 0;
-		for (int i = 1; i < (int)idLine.size(); i++) {
-			if (idLine[i] != currentId) {
-				files.push_back(std::make_tuple(currentId, start, i - 1));
-				currentId = idLine[i];
-				start = i;
-			}
-		}
-		files.push_back(std::make_tuple(currentId, start, (int)idLine.size() - 1));
-	}
-
-	// Remove free space entries from files vector
-	files.erase(std::remove_if(files.begin(), files.end(), [](auto &f){return std::get<0>(f) == -1;}), files.end());
-
-	// Sort files by descending ID
-	std::sort(files.begin(), files.end(), [](auto &a, auto &b){return std::get<0>(a) > std::get<0>(b);});
-
-	// For each file in descending order, try to move it as a whole
-	for (auto &f : files) {
-		int fid, fstart, fend;
-		std::tie(fid, fstart, fend) = f;
-		int flen = fend - fstart + 1;
-
-		// Search for free space to the left of fstart
-		int bestPos = -1;
-		int count = 0;
-		for (int i = 0; i < fstart; i++) {
-			if (idLine[i] == -1) {
-				count++;
-				if (count == flen) {
-					bestPos = i - flen + 1;
-					break;
-				}
-			} else {
-				count = 0;
-			}
-		}
-
-		// If found suitable space, move file
-		if (bestPos != -1) {
-			for (int i = fstart; i <= fend; i++) {
-				idLine[i] = -1;
-			}
-			for (int i = 0; i < flen; i++) {
-				idLine[bestPos + i] = fid;
-			}
-
-			// Update f to new position
-			fstart = bestPos;
-			fend = bestPos + flen - 1;
-			f = std::make_tuple(fid, fstart, fend);
-		}
-	}
-
-	std::cout << "----- STEP 3\x1b[34m" << std::endl;
-	// 3. calc answer
-	// in: 0099811188827773336446555566..............
-	// out: 0 * 0 = 0, 1 * 0 = 0, 2 * 9 = 18, 3 * 9 = 27, 4 * 8 = 32
-	for (int64_t i = 0; i < idLine.size() - 1; i++)
-	{
-		if (idLine[i] != -1)
+		for (int x = 0; x < map[0].size(); x++)
 		{
-			int64_t nbr1 = idLine[i];
-			outputNbr += nbr1 * i;
-			if (print)
-				std::cout << idLine[i] << " * " << i << " = " << outputNbr << std::endl;
+			if (map[y][x] == '0')
+			{
+				trail newTrail;
+				newTrail.position.x = x;
+				newTrail.position.y = y;
+				newTrail.valid = true;
+				newTrail.done = false;
+				newTrail.trailHeadId = maxTrailHeadId++;
+				trails.push_back(newTrail);
+			}
 		}
 	}
 
-	std::cout << "Answer: " << outputNbr << std::endl;
+	// 2
+	for (int t = 0; t < trails.size(); t++)
+	{
+		if (!trails[t].valid || trails[t].done)
+			continue;
+
+		// check if we can go up
+		char currentHeight = map[trails[t].position.y][trails[t].position.x];
+		// create new trails instead of chanign the current one
+		if (trails[t].position.y > 0 && map[trails[t].position.y - 1][trails[t].position.x] == currentHeight + 1)
+		{
+			trail newTrail;
+			newTrail.position.x = trails[t].position.x;
+			newTrail.position.y = trails[t].position.y - 1;
+			newTrail.valid = true;
+			newTrail.done = map[newTrail.position.y][newTrail.position.x] == '9';
+			newTrail.trailHeadId = trails[t].trailHeadId;
+			newTrail.path = trails[t].path;
+			newTrail.path.push_back(trails[t].position);
+			trails.push_back(newTrail);
+		}
+		if (trails[t].position.y < map.size() - 1 && map[trails[t].position.y + 1][trails[t].position.x] == currentHeight + 1)
+		{
+			trail newTrail;
+			newTrail.position.x = trails[t].position.x;
+			newTrail.position.y = trails[t].position.y + 1;
+			newTrail.valid = true;
+			newTrail.done = map[newTrail.position.y][newTrail.position.x] == '9';
+			newTrail.trailHeadId = trails[t].trailHeadId;
+			newTrail.path = trails[t].path;
+			newTrail.path.push_back(trails[t].position);
+			trails.push_back(newTrail);
+		}
+		if (trails[t].position.x > 0 && map[trails[t].position.y][trails[t].position.x - 1] == currentHeight + 1)
+		{
+			trail newTrail;
+			newTrail.position.x = trails[t].position.x - 1;
+			newTrail.position.y = trails[t].position.y;
+			newTrail.valid = true;
+			newTrail.done = map[newTrail.position.y][newTrail.position.x] == '9';
+			newTrail.trailHeadId = trails[t].trailHeadId;
+			newTrail.path = trails[t].path;
+			newTrail.path.push_back(trails[t].position);
+			trails.push_back(newTrail);
+		}
+		if (trails[t].position.x < map[0].size() - 1 && map[trails[t].position.y][trails[t].position.x + 1] == currentHeight + 1)
+		{
+			trail newTrail;
+			newTrail.position.x = trails[t].position.x + 1;
+			newTrail.position.y = trails[t].position.y;
+			newTrail.valid = true;
+			newTrail.done = map[newTrail.position.y][newTrail.position.x] == '9';
+			newTrail.trailHeadId = trails[t].trailHeadId;
+			newTrail.path = trails[t].path;
+			newTrail.path.push_back(trails[t].position);
+			trails.push_back(newTrail);
+		}
+		trails[t].valid = false;
+	}
+
+	// 4
+	int score = 0;
+	for (int th = 0; th < maxTrailHeadId; th++)
+	{
+		std::vector<trail> trailss;
+		for (int i = 0; i < trails.size(); i++)
+		{
+			if (trails[i].trailHeadId == th && trails[i].done && std::find(trailss.begin(), trailss.end(), trails[i]) == trailss.end())
+				trailss.push_back(trails[i]);
+		}
+		score += trailss.size();
+	}
+
+	std::cout << "The sum of the scores of all trailheads is: " << score << std::endl;
 }
