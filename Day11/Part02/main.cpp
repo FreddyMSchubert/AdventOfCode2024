@@ -7,78 +7,92 @@
 #include <exception>
 #include <vector>
 #include <algorithm>
-#include <list>
+#include <map>
+#include <unordered_map>
 
-/*
---- Day 11: Plutonian Pebbles ---
-The ancient civilization on Pluto was known for its ability to manipulate spacetime, and while the Historians explore their infinite corridors, you've noticed a strange set of physics-defying stones.
+struct Stone
+{
+	std::string value;
+	int stepsLeft;
+};
 
-At first glance, they seem like normal stones: they're arranged in a perfectly straight line, and each stone has a number engraved on it.
+struct Key
+{
+	std::string value;
+	int depth;
+	bool operator==(const Key &other) const
+	{
+		return depth == other.depth && value == other.value;
+	}
+};
 
-The strange part is that every time you blink, the stones change.
+struct KeyHash
+{
+	std::size_t operator()(const Key &k) const
+	{
+		std::hash<std::string> sh;
+		std::hash<int> ih;
+		return sh(k.value) ^ (ih(k.depth) << 1);
+	}
+};
 
-Sometimes, the number engraved on a stone changes. Other times, a stone might split in two, causing all the other stones to shift over a bit to make room in their perfectly straight line.
+static std::unordered_map<Key, int64_t, KeyHash> memo;
 
-As you observe them for a while, you find that the stones have a consistent behavior. Every time you blink, the stones each simultaneously change according to the first applicable rule in this list:
+std::string trimLeadingZeros(const std::string &val)
+{
+	size_t firstNonZero = 0;
+	while (firstNonZero < val.size() && val[firstNonZero] == '0')
+	{
+		firstNonZero++;
+	}
+	if (firstNonZero == val.size())
+	{
+		return "0";
+	}
+	return val.substr(firstNonZero);
+}
 
-If the stone is engraved with the number 0, it is replaced by a stone engraved with the number 1.
-If the stone is engraved with a number that has an even number of digits, it is replaced by two stones. The left half of the digits are engraved on the new left stone, and the right half of the digits are engraved on the new right stone. (The new numbers don't keep extra leading zeroes: 1000 would become stones 10 and 0.)
-If none of the other rules apply, the stone is replaced by a new stone; the old stone's number multiplied by 2024 is engraved on the new stone.
-No matter how the stones change, their order is preserved, and they stay on their perfectly straight line.
+void expandStoneRec(const std::string &s, int depth, int64_t & count)
+{
+	if (depth == 0)
+	{
+		count += 1;
+		return;
+	}
 
-How will the stones evolve if you keep blinking at them? You take a note of the number engraved on each stone in the line (your puzzle input).
+	Key k{ s, depth };
+	if (auto it = memo.find(k); it != memo.end())
+	{
+		count += it->second;
+		return;
+	}
 
-If you have an arrangement of five stones engraved with the numbers 0 1 10 99 999 and you blink once, the stones transform as follows:
+	int64_t localCount = 0;
 
-The first stone, 0, becomes a stone marked 1.
-The second stone, 1, is multiplied by 2024 to become 2024.
-The third stone, 10, is split into a stone marked 1 followed by a stone marked 0.
-The fourth stone, 99, is split into two stones marked 9.
-The fifth stone, 999, is replaced by a stone marked 2021976.
-So, after blinking once, your five stones would become an arrangement of seven stones engraved with the numbers 1 2024 1 0 9 9 2021976.
+	if (s == "0")
+	{
+		expandStoneRec("1", depth - 1, localCount);
+	}
+	else if ((int)s.size() % 2 == 0)
+	{
+		int half = (int)s.size() / 2;
+		std::string leftVal = trimLeadingZeros(s.substr(0, half));
+		std::string rightVal = trimLeadingZeros(s.substr(half));
+		expandStoneRec(leftVal, depth - 1, localCount);
+		expandStoneRec(rightVal, depth - 1, localCount);
+	}
+	else
+	{
+		std::string multiplied = std::to_string(std::stoll(s) * 2024);
+		expandStoneRec(multiplied, depth - 1, localCount);
+	}
 
-Here is a longer example:
-
-Initial arrangement:
-125 17
-
-After 1 blink:
-253000 1 7
-
-After 2 blinks:
-253 0 2024 14168
-
-After 3 blinks:
-512072 1 20 24 28676032
-
-After 4 blinks:
-512 72 2024 2 0 2 4 2867 6032
-
-After 5 blinks:
-1036288 7 2 20 24 4048 1 4048 8096 28 67 60 32
-
-After 6 blinks:
-2097446912 14168 4048 2 0 2 4 40 48 2024 40 48 80 96 2 8 6 7 6 0 3 2
-In this example, after blinking six times, you would have 22 stones. After blinking 25 times, you would have 55312 stones!
-
-Consider the arrangement of stones in front of you. How many stones will you have after blinking 25 times?
-
-Your puzzle answer was 186996.
-
-The first half of this puzzle is complete! It provides one gold star: *
-
---- Part Two ---
-The Historians sure are taking a long time. To be fair, the infinite corridors are very large.
-
-How many stones would you have after blinking a total of 75 times?
-*/
+	memo[k] = localCount;
+	count += localCount;
+}
 
 int main()
 {
-	int64_t outputNbr = 0;
-	bool print = false;
-	int maxTrailHeadId = 0;
-
 	std::ifstream input;
 	input.open("../input.txt");
 	std::vector<std::string> lines;
@@ -88,42 +102,24 @@ int main()
 		lines.push_back(line);
 	}
 
-	// create a vector of int64_t
-	std::list<std::string> stones;
+	std::vector<std::string> Rawstones;
 	std::istringstream iss(lines[0]);
 	std::string token;
-	while (iss >> token)
+	while (std::getline(iss, token, ' '))
 	{
-		stones.push_back(token);
+		Rawstones.push_back(token);
 	}
 
-	for (int i = 0; i < 75; i++)
+	int64_t count = 0;
+
+	std::vector<Stone> stones;
+	for (const auto &stone : Rawstones)
 	{
-		std::cout << "Blink " << i << std::endl;
-		for (auto it = stones.begin(); it != stones.end(); )
-		{
-			std::string &stone = *it;
-			if (stone == "0")
-			{
-				stone = "1";
-				++it;
-			}
-			else if (stone.size() % 2 == 0)
-			{
-				int half = static_cast<int>(stone.size()) / 2;
-				std::string left = stone.substr(0, half);
-				std::string right = stone.substr(half);
-				stone = left;
-				it = stones.insert(std::next(it), right);
-				++it;
-			}
-			else
-			{
-				stone = std::to_string(std::stoll(stone) * 2024);
-				++it;
-			}
-		}
+		stones.push_back({stone, 75});
 	}
 
-	std::cout << "Number of stones after 25 blinks: " << stones.size() << std::endl;
+	for (size_t i = 0; i < stones.size(); i++)
+		expandStoneRec(stones[i].value, stones[i].stepsLeft, count);
+
+	std::cout << "Number of stones after 75 blinks: " << count << std::endl;
 }
