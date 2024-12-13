@@ -2,3 +2,4 @@ christmasIsComing
 .vscode
 .DS_Store
 *.dSYM
+*.o
