@@ -6,6 +6,7 @@ Warning, these were coded in the name of speed, not efficiency, readability, or 
 
 | Day | Part 1 Time | Part 1 Rank | Part 2 Time | Part 2 Rank |
 | --- | ----------- | ----------- | ----------- | ----------- |
+|  15 | 00:14:47    |     434     | 01:52:47    |     2827    |
 |  14 | 00:10:37    |     653     | 00:31:33    |     819     |
 |  13 | 00:19:43    |     1921    | 01:28:03    |     4207    |
 |  12 | 00:09:26    |     666     | 01:37:50    |     3524    |
